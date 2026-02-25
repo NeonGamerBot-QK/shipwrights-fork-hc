@@ -115,7 +115,7 @@ def project_summary():
 def get_vibes():
     logger.info(f"Processing today's qualitative metrics.")
     if VIBES_CACHE["created_at"] and VIBES_CACHE["content"]:
-        if VIBES_CACHE["created_at"] > datetime.now() - timedelta(hours=5):
+        if VIBES_CACHE["created_at"] > datetime.now() - timedelta(hours=12):
             logger.info(f"Using cached qualitative metrics.")
             return jsonify(VIBES_CACHE["content"]), 200
 
