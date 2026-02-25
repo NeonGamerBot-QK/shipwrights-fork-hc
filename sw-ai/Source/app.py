@@ -345,7 +345,7 @@ def get_vibes():
                     }
                 ]
             },
-            timeout=60
+            timeout=120
         )
         logger.info(f"OpenRouter status code: {response.status_code}")
         response.raise_for_status()
