@@ -3,9 +3,13 @@ import { cache, genKey } from '@/lib/cache'
 
 interface Filters {
   type?: string | null
+  ftType?: string | null
   status?: string | null
   sortBy?: string
   lbMode?: string
+  from?: string | null
+  to?: string | null
+  search?: string | null
 }
 
 type StatsRow = {
@@ -256,9 +260,19 @@ async function fetchList(filters: Filters) {
   const { type, status, sortBy = 'newest' } = filters
   const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000)
 
-  const where: { projectType?: string; status?: string } = {}
+  const where: Record<string, unknown> = {}
   if (type && type !== 'all') where.projectType = type
+  if (filters.ftType && filters.ftType !== 'all') where.ftType = filters.ftType
   if (status && status !== 'all') where.status = status
+  if (filters.from || filters.to) {
+    where.createdAt = {
+      ...(filters.from ? { gte: new Date(filters.from) } : {}),
+      ...(filters.to ? { lte: new Date(filters.to + 'T23:59:59Z') } : {}),
+    }
+  }
+  if (filters.search) {
+    where.OR = [{ ftProjectId: filters.search }, { ftSlackId: filters.search }]
+  }
 
   const orderBy = { createdAt: sortBy === 'oldest' ? 'asc' : 'desc' } as const
 
@@ -343,8 +357,12 @@ async function getStats(lbMode: string) {
 async function getList(filters: Filters) {
   const key = genKey('certs-list', {
     type: filters.type || null,
+    ftType: filters.ftType || null,
     status: filters.status || null,
     sortBy: filters.sortBy || 'newest',
+    from: filters.from || null,
+    to: filters.to || null,
+    search: filters.search || null,
   })
   return cache(key, 15, () => fetchList(filters))
 }

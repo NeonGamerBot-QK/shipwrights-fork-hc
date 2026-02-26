@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Cert, Stats, TypeCount, Reviewer } from '@/types'
-import { CertSearch } from './cert-search'
 import { AvgWaitChart } from './avg-wait-chart'
 
 interface Props {
@@ -53,11 +52,74 @@ const fmtDate = (date: string) => {
 
 const QUEUE_TARGET = 35
 
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, cb: () => void) {
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) cb()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+}
+
+function Dropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { val: string; label: string }[]
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, () => setOpen(false))
+
+  const cur = options.find((o) => o.val === value)
+
+  return (
+    <div className="space-y-1">
+      <label className="text-amber-400 font-mono text-xs">{label}</label>
+      <div ref={ref} className="relative">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="w-full flex items-center justify-between bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none focus:border-amber-600 hover:border-zinc-500 transition-colors"
+        >
+          <span>{cur?.label || value}</span>
+          <span className="text-gray-400 ml-2">{open ? '▲' : '▼'}</span>
+        </button>
+        {open && (
+          <div className="absolute z-50 top-full mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl">
+            {options.map((o) => (
+              <button
+                key={o.val}
+                onClick={() => {
+                  onChange(o.val)
+                  setOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 font-mono text-xs transition-colors ${o.val === value ? 'bg-amber-900/50 text-amber-300' : 'text-gray-300 hover:bg-zinc-800'}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function CertsView({ initial }: Props) {
   const params = useSearchParams()
   const [type, setType] = useState('all')
+  const [ftType, setFtType] = useState('all')
   const [status, setStatus] = useState('pending')
   const [sortBy, setSortBy] = useState('oldest')
+  const [search, setSearch] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
   const [certs, setCerts] = useState(initial.certs)
   const [stats, setStats] = useState(initial.stats)
   const [leaderboard, setLeaderboard] = useState(initial.leaderboard)
@@ -66,17 +128,6 @@ export function CertsView({ initial }: Props) {
   const [msg, setMsg] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const [lbMode, setLbMode] = useState('weekly')
-  const [searchMode, setSearchMode] = useState(false)
-
-  const handleSearch = (results: Cert[] | null) => {
-    if (results === null) {
-      setSearchMode(false)
-      load()
-    } else {
-      setSearchMode(true)
-      setCerts(results)
-    }
-  }
 
   useEffect(() => {
     if (params.get('success')) {
@@ -90,9 +141,13 @@ export function CertsView({ initial }: Props) {
     try {
       const p = new URLSearchParams()
       if (type !== 'all') p.set('type', type)
+      if (ftType !== 'all') p.set('ftType', ftType)
       if (status !== 'all') p.set('status', status)
       p.set('sortBy', sortBy)
       p.set('lbMode', lbMode)
+      if (search) p.set('search', search)
+      if (from) p.set('from', from)
+      if (to) p.set('to', to)
       const res = await fetch(`/api/admin/ship_certifications?${p}`)
       if (!res.ok) return
       const data = await res.json()
@@ -104,45 +159,22 @@ export function CertsView({ initial }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [type, status, sortBy, lbMode])
+  }, [type, ftType, status, sortBy, lbMode, search, from, to])
 
-  const [mounted, setMounted] = useState(false)
+  const ready = useRef(false)
 
   useEffect(() => {
-    if (!mounted) {
-      setMounted(true)
+    if (!ready.current) {
+      ready.current = true
       return
     }
     load()
-  }, [type, status, sortBy, lbMode, mounted, load])
+  }, [type, ftType, status, sortBy, lbMode, search, from, to, load])
+
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(iv)
   }, [])
-
-  const FilterBtn = ({
-    val,
-    cur,
-    set,
-    label,
-    count,
-    color,
-  }: {
-    val: string
-    cur: string
-    set: (v: string) => void
-    label: string
-    count?: number
-    color?: string
-  }) => (
-    <button
-      onClick={() => set(val)}
-      className={`font-mono text-xs px-3 py-2 rounded-2xl border-2 transition-all ${cur === val ? (color || 'bg-amber-900/30 text-amber-400 border-amber-700/60') + ' shadow-lg' : 'bg-zinc-900/30 text-amber-300/60 border-amber-800/30 hover:bg-zinc-900/50'}`}
-    >
-      {label}
-      {count !== undefined ? ` (${count})` : ''}
-    </button>
-  )
 
   return (
     <>
@@ -344,74 +376,82 @@ export function CertsView({ initial }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4 md:mb-6">
-        <div className="space-y-3 flex-1">
-          <div>
-            <h3 className="text-white font-mono text-xs mb-2">Filter by type</h3>
-            <div className="flex flex-wrap gap-2">
-              <FilterBtn val="all" cur={type} set={setType} label="All" count={stats.totalJudged} />
-              {types.map((t) => (
-                <FilterBtn
-                  key={t.type}
-                  val={t.type}
-                  cur={type}
-                  set={setType}
-                  label={t.type}
-                  count={t.count}
-                />
-              ))}
-            </div>
+      <div className="mb-6 md:mb-8 bg-gradient-to-br from-zinc-900/90 to-black/90 border-4 border-amber-900/40 rounded-3xl p-4 md:p-6 shadow-xl space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Dropdown
+            label="Status"
+            value={status}
+            options={[
+              { val: 'pending', label: `Pending (${stats.pending})` },
+              { val: 'approved', label: `Approved (${stats.approved})` },
+              { val: 'rejected', label: `Rejected (${stats.rejected})` },
+              { val: 'all', label: `All (${stats.totalJudged})` },
+            ]}
+            onChange={setStatus}
+          />
+          <Dropdown
+            label="Sort by"
+            value={sortBy}
+            options={[
+              { val: 'oldest', label: 'Oldest first' },
+              { val: 'newest', label: 'Newest first' },
+            ]}
+            onChange={setSortBy}
+          />
+          <Dropdown
+            label="FT Type"
+            value={ftType}
+            options={[
+              { val: 'all', label: 'All' },
+              { val: 'initial', label: 'Initial' },
+              { val: 'recertification', label: 'Recertification' },
+              { val: 'resend', label: 'Resend' },
+            ]}
+            onChange={setFtType}
+          />
+          <Dropdown
+            label="Type"
+            value={type}
+            options={[
+              { val: 'all', label: `All (${stats.totalJudged})` },
+              ...types.map((t) => ({ val: t.type, label: `${t.type} (${t.count})` })),
+            ]}
+            onChange={setType}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-amber-400 font-mono text-xs">From</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              style={{ colorScheme: 'dark' }}
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none focus:border-amber-600 hover:border-zinc-500 transition-colors"
+            />
           </div>
-          <div>
-            <h3 className="text-amber-400 font-mono text-xs mb-2">Status</h3>
-            <div className="flex flex-wrap gap-2">
-              <FilterBtn
-                val="pending"
-                cur={status}
-                set={setStatus}
-                label="Pending"
-                count={stats.pending}
-                color="bg-yellow-900/30 text-yellow-400 border-yellow-700"
-              />
-              <FilterBtn
-                val="approved"
-                cur={status}
-                set={setStatus}
-                label="Approved"
-                count={stats.approved}
-                color="bg-green-900/30 text-green-400 border-green-700"
-              />
-              <FilterBtn
-                val="rejected"
-                cur={status}
-                set={setStatus}
-                label="Rejected"
-                count={stats.rejected}
-                color="bg-red-900/30 text-red-400 border-red-700"
-              />
-              <FilterBtn
-                val="all"
-                cur={status}
-                set={setStatus}
-                label="All"
-                count={stats.totalJudged}
-              />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-amber-400 font-mono text-xs mb-2">Sort</h3>
-            <div className="flex flex-wrap gap-2">
-              <FilterBtn val="oldest" cur={sortBy} set={setSortBy} label="Oldest in Queue" />
-              <FilterBtn val="newest" cur={sortBy} set={setSortBy} label="Newest in Queue" />
-            </div>
+          <div className="space-y-1">
+            <label className="text-amber-400 font-mono text-xs">To</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              style={{ colorScheme: 'dark' }}
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none focus:border-amber-600 hover:border-zinc-500 transition-colors"
+            />
           </div>
         </div>
-        <CertSearch
-          onResults={handleSearch}
-          onLoading={setLoading}
-          resultCount={searchMode ? certs.length : null}
-          init={params.get('search') || ''}
-        />
+
+        <div className="space-y-1">
+          <label className="text-amber-400 font-mono text-xs">Search</label>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="search by FT ID or Slack ID"
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 font-mono text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-600 hover:border-zinc-500 transition-colors"
+          />
+        </div>
       </div>
 
       <div className="md:hidden space-y-3">
