@@ -36,6 +36,9 @@ export const PERMS = {
   billy_btn: 'billy_btn',
   joe_btn: 'joe_btn',
   spot_check: 'spot_check',
+
+  submitter_edit: 'submitter_edit',
+  submitter_delete: 'submitter_delete',
 }
 
 export const NO_ACCESS_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
@@ -70,6 +73,7 @@ export const ROLES = {
       //PERMS.assign_view,
       //PERMS.assign_edit,
       PERMS.support_admin,
+      PERMS.submitter_edit,
     ],
   },
   observer: {
@@ -92,12 +96,13 @@ export const ROLES = {
       PERMS.ysws_edit,
       PERMS.billy_btn,
       PERMS.joe_btn,
+      PERMS.submitter_edit,
     ],
   },
   ysws_reviewer: {
     value: 'ysws_reviewer',
     label: 'YSWS Reviewer',
-    perms: [PERMS.ysws_view, PERMS.ysws_edit, PERMS.certs_view],
+    perms: [PERMS.ysws_view, PERMS.ysws_edit, PERMS.certs_view, PERMS.submitter_edit],
   },
   sw_ysws: {
     value: 'sw_ysws',
@@ -109,6 +114,7 @@ export const ROLES = {
       PERMS.support_admin,
       PERMS.ysws_view,
       PERMS.ysws_edit,
+      PERMS.submitter_edit,
     ],
   },
 }

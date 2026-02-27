@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CommitChart } from '@/components/commit-chart'
 import { TimeChart } from '@/components/time-chart'
+import { SubmitterCard } from '@/components/submitter-card'
 
 interface Commit {
   sha: string
@@ -36,6 +37,7 @@ interface ShipCert {
   id: number
   ftProjectId: string | null
   ftUsername: string | null
+  ftSlackId: string | null
   projectName: string | null
   projectType: string | null
   description: string | null
@@ -230,7 +232,13 @@ export function Review({ data, canEdit, canUndo }: Props) {
             {data.shipCert.projectName}
           </h2>
         </div>
-        <div className="shrink-0 flex gap-2">
+        <div className="shrink-0 flex gap-2 items-start">
+          {data.shipCert.ftSlackId && (
+            <SubmitterCard
+              slackId={data.shipCert.ftSlackId}
+              username={data.shipCert.ftUsername || ''}
+            />
+          )}
           {canUndo && data.status === 'done' && (
             <button
               onClick={undo}
@@ -354,6 +362,15 @@ export function Review({ data, canEdit, canUndo }: Props) {
                 <span className="text-green-400">{data.shipCert.reviewer?.username || '-'}</span>
               </div>
               <div>
+                <span className="text-gray-400">Ship Cert:</span>{' '}
+                <a
+                  href={`/admin/ship_certifications/${data.shipCert.id}/edit`}
+                  className="text-amber-400 hover:text-amber-300 font-mono"
+                >
+                  #{data.shipCert.id}
+                </a>
+              </div>
+              <div>
                 <span className="text-gray-400">YSWS Status:</span>{' '}
                 <span
                   className={
@@ -415,14 +432,6 @@ export function Review({ data, canEdit, canUndo }: Props) {
                   Readme
                 </a>
               )}
-              <a
-                href={`/admin/ship_certifications/${data.shipCert.id}/edit`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-orange-900/50 text-orange-300 px-3 py-1.5 rounded font-mono text-xs hover:bg-orange-800/50 transition-colors"
-              >
-                Ship Cert
-              </a>
             </div>
           </div>
 

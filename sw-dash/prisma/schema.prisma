@@ -47,6 +47,8 @@ model User {
   spotResolved SpotCheck[] @relation("Resolved")
   swApiKey     String?     @unique @db.VarChar(64)
 
+  submitterNotes FtSubmitterNote[]
+
   @@map("users")
 }
 
@@ -208,6 +210,20 @@ model ShipCert {
   @@index([status, yswsReturnedAt, createdAt])
   @@index([status, reviewCompletedAt, reviewerId])
   @@map("ship_certs")
+}
+
+model FtSubmitterNote {
+  id        Int      @id @default(autoincrement())
+  slackId   String
+  staffId   Int
+  text      String   @db.Text
+  certId    Int?
+  ticketId  Int?
+  createdAt DateTime @default(now())
+  staff     User     @relation(fields: [staffId], references: [id])
+
+  @@index([slackId])
+  @@map("ft_submitter_notes")
 }
 
 model YswsReview {

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { can, PERMS } from '@/lib/perms'
 import { useShipCert } from '@/hooks/useShipCert'
 import { AiSummary } from './ai-summary'
+import { SubmitterCard } from '@/components/submitter-card'
 
 function HistoryCard({ h }: { h: any }) {
   const verdictCls =
@@ -191,7 +192,7 @@ export function Form({ shipId }: Props) {
           ← back
         </Link>
 
-        <div className="flex items-start justify-between gap-4 mb-4 md:mb-8">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-4xl font-mono text-amber-400 mb-1 md:mb-2">
               Edit Cert
@@ -200,14 +201,19 @@ export function Form({ shipId }: Props) {
               {cert.project}
             </h2>
           </div>
-          {canReport && cert.ftId && (
-            <button
-              onClick={() => setShowReport(true)}
-              className="shrink-0 bg-red-950/30 text-red-400 border-2 border-red-700/60 hover:bg-red-900/40 px-4 py-2 rounded-2xl font-mono text-sm transition-all"
-            >
-              🚩 Report to Fraud Squad!
-            </button>
-          )}
+          <div className="flex items-start gap-3 shrink-0">
+            {cert.submitter.slackId && (
+              <SubmitterCard slackId={cert.submitter.slackId} username={cert.submitter.username} />
+            )}
+            {canReport && cert.ftId && (
+              <button
+                onClick={() => setShowReport(true)}
+                className="shrink-0 bg-red-950/30 text-red-400 border-2 border-red-700/60 hover:bg-red-900/40 px-4 py-2 rounded-2xl font-mono text-sm transition-all"
+              >
+                🚩 Report to Fraud Squad!
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
