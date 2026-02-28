@@ -142,4 +142,4 @@ if __name__ == "__main__":
         print("Services up and running!")
         app.run(host='0.0.0.0', port=PORT, debug=False, use_reloader=False)
     except Exception as e:
-        print(f"Error occurred whilst attempting to run SWAI: {e}")
+        print(f"Error occurred whilst attempting to run SW-AI: {e}")

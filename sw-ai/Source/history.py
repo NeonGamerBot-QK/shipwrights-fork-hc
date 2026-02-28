@@ -1,6 +1,6 @@
 import schedule, time, requests, json
 from helpers import OPENROUTER_KEY, AI_MODEL
-from helpers import format_vibes_message, clean_json_response
+from helpers import format_vibes_message, clean_json_response, logger
 from db import save_metrics_history, get_recent_tickets, get_context_tickets
 from datetime import datetime
 
@@ -9,7 +9,7 @@ def save_metrics():
     now = datetime.now()
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     for_date = today.strftime('%Y-%m-%d')
-
+    logger.info(f"Saving metrics for {for_date} #SW-HISTORY")
     try:
         resp = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
@@ -31,6 +31,7 @@ def save_metrics():
         )
         resp.raise_for_status()
         result = resp.json()
+        logger.info(f"AI response #SW-HISTORY: {result}")
     except Exception as e:
         print(f"Error saving metrics: {e}")
         return None
@@ -65,6 +66,7 @@ def save_metrics():
 
     try:
         saved = save_metrics_history(payload, created_at=today)
+        logger.info(f"Saved metrics for {for_date} #SW-HISTORY: {saved}")
         return saved
     except Exception as e:
         print(f"Error saving metrics: {e}")
