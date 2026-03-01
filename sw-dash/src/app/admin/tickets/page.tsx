@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ago } from '@/lib/fmt'
 
 interface Ticket {
   id: number
@@ -75,17 +76,6 @@ export default function Tickets() {
       clearInterval(healthInt)
     }
   }, [])
-
-  const ago = (date: string) => {
-    const now = new Date()
-    const d = new Date(date)
-    const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-    if (diff < 60) return 'just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
-    return `${Math.floor(diff / 604800)}w ago`
-  }
 
   const openThread = (ticket: Ticket, type: 'user' | 'staff') => {
     const threadTs = type === 'user' ? ticket.userThreadTs : ticket.staffThreadTs

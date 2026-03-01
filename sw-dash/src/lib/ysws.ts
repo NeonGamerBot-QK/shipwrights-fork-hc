@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { cache, genKey } from '@/lib/cache'
 import { fetchDevlogs, FtDevlog, getAiDecl } from './ft'
-import { parseRepo, fetchCommits } from './gh'
+import { parseRepo, fetchCommits } from './github'
 import { grab, upload } from './r2'
 
 const ftBase = process.env.NEXT_PUBLIC_FLAVORTOWN_URL || ''
