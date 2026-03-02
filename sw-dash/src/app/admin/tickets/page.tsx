@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ago } from '@/lib/fmt'
+import { MsgRender } from '@/components/ui/msg-render'
 import {
   LineChart,
   Line,
@@ -369,7 +370,7 @@ export default function Tickets() {
                     </span>
                   </div>
                   <div className="text-amber-200 font-mono text-xs line-clamp-2 mb-2">
-                    {t.question}
+                    <MsgRender text={t.question} />
                   </div>
                   <div className="flex justify-between items-center text-xs font-mono">
                     <div className="flex gap-1 flex-wrap">
@@ -439,7 +440,7 @@ export default function Tickets() {
                         </td>
                         <td className="p-4 max-w-xs">
                           <p className="text-amber-200 font-mono text-sm line-clamp-2">
-                            {t.question}
+                            <MsgRender text={t.question} />
                           </p>
                         </td>
                         <td className="p-4">

@@ -122,18 +122,19 @@ export function MsgRender({ text, users = {} }: Props) {
   const emojiRe = new RegExp(EMOJI_RE.source, 'g')
   while ((m = emojiRe.exec(text)) !== null) {
     if (items.some((i) => m!.index >= i.start && m!.index < i.end)) continue
+    const emojiName = m[1]
     items.push({
       start: m.index,
       end: m.index + m[0].length,
       node: (
         <img
           key={`e-${m.index}`}
-          src={`https://cachet.dunkirk.sh/emojis/${m[1]}/r`}
-          alt={`:${m[1]}:`}
+          src={`https://cachet.dunkirk.sh/emojis/${emojiName}/r`}
+          alt={`:${emojiName}:`}
           className="inline-block w-5 h-5 align-middle"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
-            e.currentTarget.insertAdjacentText('afterend', `:${m![1]}:`)
+            e.currentTarget.insertAdjacentText('afterend', `:${emojiName}:`)
           }}
         />
       ),

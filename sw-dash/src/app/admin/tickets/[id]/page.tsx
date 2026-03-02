@@ -184,7 +184,7 @@ export default function TicketDetail() {
             </span>
           </div>
           <div className="text-amber-200 font-mono text-xs mb-2 line-clamp-2">
-            {ticket.question}
+            <MsgRender text={ticket.question} users={ticket.userMap} />
           </div>
 
           {can(user?.role || '', PERMS.support_edit) && (
@@ -316,80 +316,88 @@ export default function TicketDetail() {
               </div>
             </div>
 
-            {ticket.messages.map((msg) => (
-              <div key={msg.id} className={`flex gap-2 ${msg.pending ? 'opacity-50' : ''}`}>
-                <div className="w-7 h-7 rounded-full bg-amber-900/40 flex items-center justify-center flex-shrink-0">
-                  {msg.senderAvatar ? (
-                    <Image
-                      src={msg.senderAvatar}
-                      width={28}
-                      height={28}
-                      className="w-7 h-7 rounded-full"
-                      alt={msg.senderName}
-                    />
-                  ) : (
-                    <span className="text-amber-300 font-mono text-xs">{msg.senderName[0]}</span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-1 flex-wrap">
-                    <span className="text-amber-200 font-mono text-xs font-bold">
-                      {msg.senderName}
-                    </span>
-                    {msg.isStaff && <span className="text-sky-400 font-mono text-xs">•</span>}
-                    {msg.pending && (
-                      <span className="text-yellow-400 font-mono text-xs">sending...</span>
-                    )}
-                    <span className="text-amber-300/60 font-mono text-xs">
-                      {new Date(msg.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="text-amber-200 font-mono text-xs">
+            {ticket.messages.map((msg) =>
+              msg.senderId === 'Shipwrighter' ? (
+                <div key={msg.id} className="flex justify-center py-1">
+                  <span className="text-amber-300/40 font-mono text-xs bg-amber-900/10 px-2 py-0.5 rounded-full border border-amber-900/20">
                     <MsgRender text={msg.message} users={ticket.userMap} />
-                  </div>
-                  {msg.files && msg.files.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {msg.files.map((file, idx) => {
-                        const isImage = file.mimetype?.startsWith('image/')
-                        const isSlack = file.url.includes('files.slack.com')
-                        const fileUrl = isSlack
-                          ? `/api/proxy-file?url=${encodeURIComponent(file.url)}`
-                          : file.url
-
-                        if (isImage) {
-                          return (
-                            <div
-                              key={idx}
-                              className="border-2 border-amber-700/50 rounded-xl overflow-hidden"
-                              onClick={() => setLightbox(fileUrl)}
-                            >
-                              <Image
-                                src={fileUrl}
-                                alt={file.name}
-                                width={120}
-                                height={90}
-                                className="w-24 h-18 object-cover"
-                              />
-                            </div>
-                          )
-                        }
-                        return (
-                          <a
-                            key={idx}
-                            href={fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-amber-900/30 border-2 border-amber-700/50 rounded-xl px-2 py-1 text-amber-400 text-xs truncate max-w-[100px]"
-                          >
-                            {file.name}
-                          </a>
-                        )
-                      })}
-                    </div>
-                  )}
+                  </span>
                 </div>
-              </div>
-            ))}
+              ) : (
+                <div key={msg.id} className={`flex gap-2 ${msg.pending ? 'opacity-50' : ''}`}>
+                  <div className="w-7 h-7 rounded-full bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                    {msg.senderAvatar ? (
+                      <Image
+                        src={msg.senderAvatar}
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 rounded-full"
+                        alt={msg.senderName}
+                      />
+                    ) : (
+                      <span className="text-amber-300 font-mono text-xs">{msg.senderName[0]}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 mb-1 flex-wrap">
+                      <span className="text-amber-200 font-mono text-xs font-bold">
+                        {msg.senderName}
+                      </span>
+                      {msg.isStaff && <span className="text-sky-400 font-mono text-xs">•</span>}
+                      {msg.pending && (
+                        <span className="text-yellow-400 font-mono text-xs">sending...</span>
+                      )}
+                      <span className="text-amber-300/60 font-mono text-xs">
+                        {new Date(msg.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="text-amber-200 font-mono text-xs">
+                      <MsgRender text={msg.message} users={ticket.userMap} />
+                    </div>
+                    {msg.files && msg.files.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {msg.files.map((file, idx) => {
+                          const isImage = file.mimetype?.startsWith('image/')
+                          const isSlack = file.url.includes('files.slack.com')
+                          const fileUrl = isSlack
+                            ? `/api/proxy-file?url=${encodeURIComponent(file.url)}`
+                            : file.url
+
+                          if (isImage) {
+                            return (
+                              <div
+                                key={idx}
+                                className="border-2 border-amber-700/50 rounded-xl overflow-hidden"
+                                onClick={() => setLightbox(fileUrl)}
+                              >
+                                <Image
+                                  src={fileUrl}
+                                  alt={file.name}
+                                  width={120}
+                                  height={90}
+                                  className="w-24 h-18 object-cover"
+                                />
+                              </div>
+                            )
+                          }
+                          return (
+                            <a
+                              key={idx}
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-amber-900/30 border-2 border-amber-700/50 rounded-xl px-2 py-1 text-amber-400 text-xs truncate max-w-[100px]"
+                            >
+                              {file.name}
+                            </a>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
             <div ref={end} />
           </div>
 
@@ -509,7 +517,7 @@ export default function TicketDetail() {
                 <div>
                   <div className="text-amber-300/60 font-mono text-xs mb-1">question</div>
                   <div className="text-amber-200 font-mono text-xs leading-relaxed break-words">
-                    {ticket.question}
+                    <MsgRender text={ticket.question} users={ticket.userMap} />
                   </div>
                 </div>
                 <div>
@@ -728,100 +736,108 @@ export default function TicketDetail() {
                   </div>
                 </div>
 
-                {ticket.messages.map((msg) => (
-                  <div key={msg.id} className={`flex gap-3 ${msg.pending ? 'opacity-50' : ''}`}>
-                    <div className="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center flex-shrink-0">
-                      {msg.senderAvatar ? (
-                        <Image
-                          src={msg.senderAvatar}
-                          width={36}
-                          height={36}
-                          className="w-9 h-9 rounded-full"
-                          alt={msg.senderName}
-                        />
-                      ) : (
-                        <span className="text-amber-300 font-mono text-sm">
-                          {msg.senderName[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-amber-200 font-mono text-sm font-bold">
-                          {msg.senderName}
-                        </span>
-                        {!!msg.isStaff && (
-                          <span className="text-sky-400 font-mono text-xs">staff</span>
-                        )}
-                        {msg.pending && (
-                          <span className="text-yellow-400 font-mono text-xs">sending...</span>
-                        )}
-                        <span className="text-amber-300/60 font-mono text-xs">
-                          {new Date(msg.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="text-amber-200 font-mono text-sm">
+                {ticket.messages.map((msg) =>
+                  msg.senderId === 'Shipwrighter' ? (
+                    <div key={msg.id} className="flex justify-center py-1">
+                      <span className="text-amber-300/40 font-mono text-xs bg-amber-900/10 px-3 py-1 rounded-full border border-amber-900/20">
                         <MsgRender text={msg.message} users={ticket.userMap} />
+                      </span>
+                    </div>
+                  ) : (
+                    <div key={msg.id} className={`flex gap-3 ${msg.pending ? 'opacity-50' : ''}`}>
+                      <div className="w-9 h-9 rounded-full bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                        {msg.senderAvatar ? (
+                          <Image
+                            src={msg.senderAvatar}
+                            width={36}
+                            height={36}
+                            className="w-9 h-9 rounded-full"
+                            alt={msg.senderName}
+                          />
+                        ) : (
+                          <span className="text-amber-300 font-mono text-sm">
+                            {msg.senderName[0]}
+                          </span>
+                        )}
                       </div>
-                      {msg.files && msg.files.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {msg.files.map((file, idx) => {
-                            const isImage = file.mimetype?.startsWith('image/')
-                            const isSlack = file.url.includes('files.slack.com')
-                            const fileUrl = isSlack
-                              ? `/api/proxy-file?url=${encodeURIComponent(file.url)}`
-                              : file.url
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-amber-200 font-mono text-sm font-bold">
+                            {msg.senderName}
+                          </span>
+                          {!!msg.isStaff && (
+                            <span className="text-sky-400 font-mono text-xs">staff</span>
+                          )}
+                          {msg.pending && (
+                            <span className="text-yellow-400 font-mono text-xs">sending...</span>
+                          )}
+                          <span className="text-amber-300/60 font-mono text-xs">
+                            {new Date(msg.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-amber-200 font-mono text-sm">
+                          <MsgRender text={msg.message} users={ticket.userMap} />
+                        </div>
+                        {msg.files && msg.files.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {msg.files.map((file, idx) => {
+                              const isImage = file.mimetype?.startsWith('image/')
+                              const isSlack = file.url.includes('files.slack.com')
+                              const fileUrl = isSlack
+                                ? `/api/proxy-file?url=${encodeURIComponent(file.url)}`
+                                : file.url
 
-                            if (isImage) {
-                              return (
-                                <div
-                                  key={idx}
-                                  className="border-2 border-amber-700/50 rounded-xl overflow-hidden cursor-pointer hover:border-amber-500 transition-colors group"
-                                  onClick={() => setLightbox(fileUrl)}
-                                >
-                                  <div className="relative">
-                                    <Image
-                                      src={fileUrl}
-                                      alt={file.name}
-                                      width={200}
-                                      height={150}
-                                      className="w-48 h-36 object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                      <span className="text-amber-200 text-sm">biggae view</span>
+                              if (isImage) {
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="border-2 border-amber-700/50 rounded-xl overflow-hidden cursor-pointer hover:border-amber-500 transition-colors group"
+                                    onClick={() => setLightbox(fileUrl)}
+                                  >
+                                    <div className="relative">
+                                      <Image
+                                        src={fileUrl}
+                                        alt={file.name}
+                                        width={200}
+                                        height={150}
+                                        className="w-48 h-36 object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <span className="text-amber-200 text-sm">biggae view</span>
+                                      </div>
+                                    </div>
+                                    <div className="bg-amber-900/30 px-2 py-1 text-xs text-amber-300/70 truncate max-w-[192px]">
+                                      {file.name}
                                     </div>
                                   </div>
-                                  <div className="bg-amber-900/30 px-2 py-1 text-xs text-amber-300/70 truncate max-w-[192px]">
-                                    {file.name}
-                                  </div>
-                                </div>
-                              )
-                            }
+                                )
+                              }
 
-                            return (
-                              <a
-                                key={idx}
-                                href={fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 bg-amber-900/30 border-2 border-amber-700/50 rounded-xl px-3 py-2 hover:border-amber-500 transition-colors"
-                              >
-                                <div>
-                                  <div className="text-amber-400 text-sm max-w-[150px] truncate">
-                                    {file.name}
+                              return (
+                                <a
+                                  key={idx}
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 bg-amber-900/30 border-2 border-amber-700/50 rounded-xl px-3 py-2 hover:border-amber-500 transition-colors"
+                                >
+                                  <div>
+                                    <div className="text-amber-400 text-sm max-w-[150px] truncate">
+                                      {file.name}
+                                    </div>
+                                    <div className="text-amber-300/60 text-xs">
+                                      {(file.size / 1024).toFixed(1)}KB
+                                    </div>
                                   </div>
-                                  <div className="text-amber-300/60 text-xs">
-                                    {(file.size / 1024).toFixed(1)}KB
-                                  </div>
-                                </div>
-                              </a>
-                            )
-                          })}
-                        </div>
-                      )}
+                                </a>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
                 <div ref={end} />
               </div>
 
