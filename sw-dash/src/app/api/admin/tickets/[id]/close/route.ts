@@ -26,7 +26,8 @@ export const POST = withParams(PERMS.support_edit)(async ({ user, params, ip, ua
   const ticket = tickets[0]
 
   await prisma.$executeRawUnsafe(
-    "UPDATE tickets SET status = 'closed', closedAt = NOW() WHERE id = ?",
+    "UPDATE tickets SET status = 'closed', closedAt = NOW(), closedBy = ? WHERE id = ?",
+    user.slackId,
     id
   )
 
@@ -75,6 +76,7 @@ export const POST = withParams(PERMS.support_edit)(async ({ user, params, ip, ua
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': botKey },
       body: JSON.stringify({
+        ticketId: id,
         userThreadTs: ticket.userThreadTs,
         staffThreadTs: ticket.staffThreadTs,
         staffName: user.username,

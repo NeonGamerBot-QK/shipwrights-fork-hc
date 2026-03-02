@@ -1,19 +1,28 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ago } from '@/lib/fmt'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts'
 
 interface Ticket {
   id: number
   userName: string
+  userAvatar?: string | null
   question: string
   status: string
   createdAt: string
   assignees?: Array<{ id: number; name: string; avatar?: string | null }>
-  userThreadTs?: string
-  staffThreadTs?: string
+  userThreadTs?: string | null
+  staffThreadTs?: string | null
 }
 
 interface Stats {
@@ -22,13 +31,19 @@ interface Stats {
   closed: number
 }
 
+interface GraphPoint {
+  date: string
+  created: number
+  closed: number
+}
+
 export default function Tickets() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [stats, setStats] = useState<Stats>({ total: 0, open: 0, closed: 0 })
+  const [graphData, setGraphData] = useState<GraphPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('open')
   const [botOk, setBotOk] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     Promise.all([
@@ -42,7 +57,6 @@ export default function Tickets() {
       .then(([allTickets, filteredTickets]) => {
         const all = Array.isArray(allTickets) ? allTickets : []
         const filtered = Array.isArray(filteredTickets) ? filteredTickets : []
-
         setTickets(filtered)
         setStats({
           total: all.length,
@@ -58,73 +72,70 @@ export default function Tickets() {
   }, [filter])
 
   useEffect(() => {
-    const botUrl = process.env.NEXT_PUBLIC_BOT_URL || 'http://localhost:45100'
+    fetch('/api/admin/tickets/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return
+        const createdMap = new Map<string, number>(data.created.map((d: any) => [d.date, d.count]))
+        const closedMap = new Map<string, number>(data.closed.map((d: any) => [d.date, d.count]))
+        const allDates = new Set([...createdMap.keys(), ...closedMap.keys()])
+        const merged = [...allDates].sort().map((date) => ({
+          date,
+          created: createdMap.get(date) || 0,
+          closed: closedMap.get(date) || 0,
+        }))
+        setGraphData(merged)
+      })
+      .catch(() => {})
+  }, [])
 
-    const checkHealth = async () => {
+  useEffect(() => {
+    const botUrl = process.env.NEXT_PUBLIC_BOT_URL || 'http://localhost:45100'
+    const check = async () => {
       try {
-        const r = await fetch(`${botUrl}/health`, { method: 'GET' })
+        const r = await fetch(`${botUrl}/health`)
         setBotOk(r.ok)
       } catch {
         setBotOk(false)
       }
     }
-
-    checkHealth()
-    const healthInt = setInterval(checkHealth, 10000)
-
-    return () => {
-      clearInterval(healthInt)
-    }
+    check()
+    const t = setInterval(check, 10000)
+    return () => clearInterval(t)
   }, [])
 
-  const openThread = (ticket: Ticket, type: 'user' | 'staff') => {
-    const threadTs = type === 'user' ? ticket.userThreadTs : ticket.staffThreadTs
-    if (!threadTs) return
-
-    const slackUrl = `slack://channel?team=T0266FRGM&id=C08578QKW4C&message=${threadTs}`
-    window.open(slackUrl, '_blank')
-  }
-
   const skel = () => (
-    <main className="bg-grid min-h-screen w-full p-4 md:p-8" role="main">
+    <main className="bg-grid min-h-screen w-full p-4 md:p-8">
       <div className="w-full">
-        <div className="h-4 w-16 bg-zinc-800/40 rounded mb-4 md:mb-6"></div>
+        <div className="h-4 w-16 bg-zinc-800/40 rounded mb-4 md:mb-6" />
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 md:mb-8 min-h-[48px]">
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            <div className="h-8 w-32 bg-zinc-800/50 rounded"></div>
-            <div className="h-6 w-16 bg-zinc-800/30 rounded"></div>
+            <div className="h-8 w-32 bg-zinc-800/50 rounded" />
+            <div className="h-6 w-16 bg-zinc-800/30 rounded" />
           </div>
         </div>
-        <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-4 border-amber-900/40 rounded-3xl p-4 md:p-6 shadow-xl shadow-amber-950/20 mb-6 md:mb-8 min-h-[140px]">
-          <div className="h-5 w-16 bg-zinc-800/50 rounded mb-4"></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="text-center p-3 bg-zinc-900/50 rounded-2xl border-2 border-amber-800/30 min-h-[80px]"
-              >
-                <div className="h-8 w-12 bg-zinc-800/40 rounded mx-auto mb-2"></div>
-                <div className="h-3 w-16 bg-zinc-800/30 rounded mx-auto"></div>
-              </div>
-            ))}
+        <div className="mb-6 md:mb-8">
+          <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-2 border-amber-900/40 rounded-2xl p-4 md:p-5">
+            <div className="h-4 w-24 bg-zinc-800/40 rounded mb-2" />
+            <div className="h-9 w-16 bg-zinc-800/50 rounded mb-4" />
+            <div className="border-t border-zinc-800 pt-4 flex gap-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={i}>
+                  <div className="h-3 w-12 bg-zinc-800/30 rounded mb-1" />
+                  <div className="h-6 w-10 bg-zinc-800/40 rounded" />
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-zinc-800 mt-4 pt-4">
+              <div className="h-[200px] bg-zinc-800/20 rounded" />
+            </div>
           </div>
         </div>
-        <div className="mb-4 md:mb-6">
-          <div className="h-4 w-12 bg-zinc-800/40 rounded mb-2"></div>
-          <div className="flex flex-wrap gap-2">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="h-9 w-24 bg-zinc-900/30 rounded-2xl border-2 border-zinc-800/30"
-              ></div>
-            ))}
-          </div>
-        </div>
-        <div className="hidden md:block bg-gradient-to-br from-zinc-900/90 to-black/90 border-4 border-amber-900/40 rounded-3xl overflow-hidden shadow-2xl shadow-amber-950/30">
+        <div className="hidden md:block bg-gradient-to-br from-zinc-900/90 to-black/90 border-2 border-amber-900/40 rounded-2xl overflow-hidden shadow-2xl">
           <table className="w-full">
             <thead>
               <tr className="border-b border-amber-900/30">
-                {['ID', 'USER', 'QUESTION', 'ASSIGNEE', 'STATUS', 'CREATED', 'THREADS'].map((h) => (
+                {['ID', 'USER', 'QUESTION', 'ASSIGNEE', 'STATUS', 'CREATED', ''].map((h) => (
                   <th key={h} className="text-left p-4 text-amber-400 font-mono text-sm">
                     {h}
                   </th>
@@ -134,48 +145,15 @@ export default function Tickets() {
             <tbody>
               {[...Array(5)].map((_, i) => (
                 <tr key={i} className="border-b border-amber-900/20">
-                  <td className="p-4">
-                    <div className="h-4 w-12 bg-zinc-800/40 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-4 w-20 bg-zinc-800/40 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-4 w-40 bg-zinc-800/40 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-4 w-16 bg-zinc-800/30 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-5 w-14 bg-zinc-800/40 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-4 w-20 bg-zinc-800/30 rounded"></div>
-                  </td>
-                  <td className="p-4">
-                    <div className="h-4 w-16 bg-zinc-800/30 rounded"></div>
-                  </td>
+                  {[...Array(7)].map((_, j) => (
+                    <td key={j} className="p-4">
+                      <div className="h-4 w-20 bg-zinc-800/40 rounded" />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="md:hidden space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="border-4 border-amber-900/40 bg-gradient-to-br from-zinc-900/90 to-black/90 p-3 rounded-3xl min-h-[120px]"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <div className="h-4 w-16 bg-zinc-800/50 rounded mb-1"></div>
-                  <div className="h-3 w-24 bg-zinc-800/30 rounded"></div>
-                </div>
-                <div className="h-5 w-12 bg-zinc-800/40 rounded"></div>
-              </div>
-              <div className="h-3 w-full bg-zinc-800/30 rounded mt-3"></div>
-            </div>
-          ))}
         </div>
       </div>
     </main>
@@ -217,52 +195,139 @@ export default function Tickets() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-4 border-amber-900/40 rounded-3xl p-4 md:p-6 shadow-xl shadow-amber-950/20 mb-6 md:mb-8">
-          <h2 className="text-amber-400 font-mono text-base md:text-lg mb-3 md:mb-4">Stats</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-zinc-900/50 rounded-2xl border-2 border-amber-800/30">
-              <div className="text-white font-mono text-2xl md:text-3xl font-bold">
-                {stats.total}
+        <div className="mb-6 md:mb-8">
+          <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-2 border-amber-900/40 rounded-2xl p-4 md:p-5 shadow-xl">
+            <div className="mb-4">
+              <div className="text-gray-400 font-mono text-xs mb-1">Total tickets</div>
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl md:text-4xl font-bold font-mono text-white">
+                  {stats.total}
+                </span>
+                <span className="text-gray-400 font-mono text-sm">
+                  {stats.open} open, {stats.closed} closed
+                </span>
               </div>
-              <div className="text-gray-400 font-mono text-xs md:text-sm mt-1">Total</div>
             </div>
-            <div className="text-center p-3 bg-green-900/20 rounded-2xl border-2 border-green-700/50">
-              <div className="text-green-400 font-mono text-2xl md:text-3xl font-bold">
-                {stats.open}
+
+            <div className="flex flex-wrap gap-4 md:gap-6 pt-4 border-t border-zinc-800">
+              <div>
+                <div className="text-gray-500 font-mono text-xs mb-1">Open</div>
+                <span className="text-xl font-bold font-mono text-green-400">{stats.open}</span>
               </div>
-              <div className="text-green-300/70 font-mono text-xs md:text-sm mt-1">Open</div>
+              <div>
+                <div className="text-gray-500 font-mono text-xs mb-1">Closed</div>
+                <span className="text-xl font-bold font-mono text-amber-400">{stats.closed}</span>
+              </div>
+              <div>
+                <div className="text-gray-500 font-mono text-xs mb-1">Close rate</div>
+                <span className="text-xl font-bold font-mono text-white">
+                  {stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0}%
+                </span>
+              </div>
             </div>
-            <div className="text-center p-3 bg-amber-900/20 rounded-2xl border-2 border-amber-700/50">
-              <div className="text-amber-400 font-mono text-2xl md:text-3xl font-bold">
-                {stats.closed}
+
+            <div className="mt-4 pt-4 border-t border-zinc-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-400 font-mono text-xs">last 30 days</span>
+                <div className="flex gap-3 font-mono text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-0.5 bg-green-400 inline-block" /> created
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-0.5 bg-amber-400 inline-block" /> closed
+                  </span>
+                </div>
               </div>
-              <div className="text-amber-300/70 font-mono text-xs md:text-sm mt-1">Closed</div>
+              {graphData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={graphData} margin={{ top: 5, right: 10, bottom: 40, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#78716c10" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#78716c"
+                      style={{ fontSize: '10px' }}
+                      tickFormatter={(d) => {
+                        const dt = new Date(d)
+                        return `${dt.toLocaleString('en-US', { month: 'short' })} ${dt.getDate()}`
+                      }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={40}
+                    />
+                    <YAxis
+                      stroke="#78716c"
+                      style={{ fontSize: '10px' }}
+                      allowDecimals={false}
+                      width={25}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        const d = new Date(payload[0].payload.date)
+                        return (
+                          <div className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 shadow-xl">
+                            <p className="text-gray-400 text-xs font-mono mb-1">
+                              {d.toLocaleString('en-US', { month: 'short' })} {d.getDate()}
+                            </p>
+                            <p className="text-green-400 text-xs font-mono">
+                              created: {payload[0].payload.created}
+                            </p>
+                            <p className="text-amber-400 text-xs font-mono">
+                              closed: {payload[0].payload.closed}
+                            </p>
+                          </div>
+                        )
+                      }}
+                      cursor={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="created"
+                      stroke="#4ade80"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="closed"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-gray-500 font-mono text-sm">
+                  no data yet
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="mb-4 md:mb-6">
-          <h3 className="text-amber-400 font-mono text-xs md:text-sm mb-2">Filter</h3>
-          <div className="flex flex-wrap gap-2">
-            {['all', 'open', 'closed'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`font-mono text-xs px-3 py-2 rounded-2xl border-2 transition-all ${
-                  filter === f
-                    ? 'bg-amber-900/30 text-amber-400 border-amber-700/60 shadow-lg shadow-amber-950/20'
-                    : 'bg-zinc-900/30 text-amber-300/60 border-amber-800/30 hover:bg-zinc-900/50'
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)} (
-                {f === 'all' ? stats.total : f === 'open' ? stats.open : stats.closed})
-              </button>
-            ))}
-          </div>
+        <div className="mb-4 md:mb-6 flex flex-wrap gap-1">
+          {['all', 'open', 'closed'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`font-mono text-xs px-3 py-1.5 rounded-xl border transition-all ${
+                filter === f
+                  ? f === 'open'
+                    ? 'bg-green-900/40 text-green-300 border-green-600'
+                    : f === 'closed'
+                      ? 'bg-amber-900/40 text-amber-300 border-amber-600'
+                      : 'bg-zinc-800 text-white border-zinc-600'
+                  : 'bg-zinc-900/50 text-gray-400 border-gray-700 hover:bg-zinc-800'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)} (
+              {f === 'all' ? stats.total : f === 'open' ? stats.open : stats.closed})
+            </button>
+          ))}
         </div>
 
         {tickets.length === 0 ? (
-          <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-4 border-amber-900/40 p-4 rounded-3xl shadow-2xl shadow-amber-950/30">
+          <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border-2 border-amber-900/40 p-4 rounded-2xl shadow-2xl">
             <p className="text-amber-300/60 font-mono text-sm">nothing here bruh</p>
           </div>
         ) : (
@@ -271,73 +336,69 @@ export default function Tickets() {
               {tickets.map((t) => (
                 <div
                   key={t.id}
-                  className="border-4 border-amber-900/40 bg-gradient-to-br from-zinc-900/90 to-black/90 p-3 rounded-3xl shadow-xl shadow-amber-950/20"
+                  className="border-2 border-amber-900/30 bg-gradient-to-br from-zinc-900/80 to-black/80 p-3 rounded-2xl shadow-lg"
                 >
-                  <div
-                    onClick={() => router.push(`/admin/tickets/sw-${t.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {t.userAvatar ? (
+                        <img
+                          src={t.userAvatar}
+                          alt=""
+                          className="w-7 h-7 rounded-full shrink-0 object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-400 font-mono text-xs shrink-0">
+                          {t.userName?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
                         <div className="text-amber-400 font-mono text-sm font-bold">sw-{t.id}</div>
                         <div className="text-amber-300/60 font-mono text-xs truncate">
                           {t.userName}
                         </div>
                       </div>
-                      <span
-                        className={`font-mono text-xs px-2 py-1 rounded-xl border-2 ml-2 ${t.status === 'open' ? 'bg-green-900/30 text-green-400 border-green-700' : 'bg-amber-900/30 text-amber-300/70 border-amber-700'}`}
-                      >
-                        {t.status}
-                      </span>
                     </div>
-                    <div className="text-amber-200 font-mono text-xs line-clamp-2 mb-2">
-                      {t.question}
-                    </div>
-                    <div className="flex justify-between text-xs font-mono">
-                      <div className="flex gap-1 flex-wrap">
-                        {t.assignees && t.assignees.length > 0 ? (
-                          t.assignees.map((a, i) => (
-                            <span key={a.id} className="text-amber-300/60">
-                              {a.name}
-                              {i < t.assignees!.length - 1 ? ',' : ''}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-amber-300/60">unassigned</span>
-                        )}
-                      </div>
-                      <span className="text-amber-300/60">{ago(t.createdAt)}</span>
-                    </div>
+                    <span
+                      className={`font-mono text-xs px-2 py-1 rounded-xl border-2 ml-2 shrink-0 ${
+                        t.status === 'open'
+                          ? 'bg-green-900/30 text-green-400 border-green-700'
+                          : 'bg-amber-900/30 text-amber-300/70 border-amber-700'
+                      }`}
+                    >
+                      {t.status}
+                    </span>
                   </div>
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-amber-900/30">
-                    {t.userThreadTs && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openThread(t, 'user')
-                        }}
-                        className="flex-1 bg-blue-900/30 text-blue-400 border-2 border-blue-700 px-3 py-1.5 rounded-xl font-mono text-xs hover:bg-blue-900/50 transition-all active:scale-95"
+                  <div className="text-amber-200 font-mono text-xs line-clamp-2 mb-2">
+                    {t.question}
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <div className="flex gap-1 flex-wrap">
+                      {t.assignees && t.assignees.length > 0 ? (
+                        t.assignees.map((a, i) => (
+                          <span key={a.id} className="text-amber-300/60">
+                            {a.name}
+                            {i < t.assignees!.length - 1 ? ',' : ''}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-amber-300/60">unassigned</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-300/60">{ago(t.createdAt)}</span>
+                      <Link
+                        href={`/admin/tickets/sw-${t.id}`}
+                        className="bg-amber-900/30 text-amber-400 border border-amber-700 px-3 py-1 rounded-xl font-mono text-xs hover:bg-amber-900/50 transition-all"
                       >
-                        user thread
-                      </button>
-                    )}
-                    {t.staffThreadTs && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openThread(t, 'staff')
-                        }}
-                        className="flex-1 bg-purple-900/30 text-purple-400 border-2 border-purple-700 px-3 py-1.5 rounded-xl font-mono text-xs hover:bg-purple-900/50 transition-all active:scale-95"
-                      >
-                        staff thread
-                      </button>
-                    )}
+                        open →
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="hidden md:block border-4 border-amber-900/40 bg-gradient-to-br from-zinc-900/90 to-black/90 overflow-hidden rounded-3xl shadow-2xl shadow-amber-950/30">
+            <div className="hidden md:block border-2 border-amber-900/40 bg-gradient-to-br from-zinc-900/90 to-black/90 overflow-hidden rounded-2xl shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -348,7 +409,7 @@ export default function Tickets() {
                       <th className="text-left p-4 text-amber-400 font-mono text-sm">ASSIGNEE</th>
                       <th className="text-left p-4 text-amber-400 font-mono text-sm">STATUS</th>
                       <th className="text-left p-4 text-amber-400 font-mono text-sm">CREATED</th>
-                      <th className="text-left p-4 text-amber-400 font-mono text-sm">THREADS</th>
+                      <th className="p-4" />
                     </tr>
                   </thead>
                   <tbody>
@@ -358,23 +419,28 @@ export default function Tickets() {
                         className="border-b border-amber-900/20 hover:bg-amber-950/20 transition-colors"
                       >
                         <td className="p-4">
-                          <Link
-                            href={`/admin/tickets/sw-${t.id}`}
-                            className="text-amber-400 font-mono text-sm hover:text-amber-300 underline"
-                          >
-                            sw-{t.id}
-                          </Link>
-                        </td>
-                        <td className="p-4 text-amber-200 font-mono text-sm truncate">
-                          {t.userName}
+                          <span className="text-amber-400 font-mono text-sm">sw-{t.id}</span>
                         </td>
                         <td className="p-4">
-                          <Link
-                            href={`/admin/tickets/sw-${t.id}`}
-                            className="text-amber-200 font-mono text-sm hover:text-amber-300 line-clamp-1"
-                          >
+                          <div className="flex items-center gap-2">
+                            {t.userAvatar ? (
+                              <img
+                                src={t.userAvatar}
+                                alt=""
+                                className="w-7 h-7 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-amber-900/40 flex items-center justify-center text-amber-400 font-mono text-xs shrink-0">
+                                {t.userName?.[0]?.toUpperCase() ?? '?'}
+                              </div>
+                            )}
+                            <span className="text-amber-200 font-mono text-sm">{t.userName}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 max-w-xs">
+                          <p className="text-amber-200 font-mono text-sm line-clamp-2">
                             {t.question}
-                          </Link>
+                          </p>
                         </td>
                         <td className="p-4">
                           <div className="flex flex-wrap gap-1">
@@ -412,27 +478,12 @@ export default function Tickets() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <div className="flex gap-2">
-                            {t.userThreadTs && (
-                              <button
-                                onClick={() => openThread(t, 'user')}
-                                className="bg-blue-900/30 text-blue-400 border border-blue-700 px-2 py-1 rounded font-mono text-xs hover:bg-blue-900/50 transition-all"
-                              >
-                                user
-                              </button>
-                            )}
-                            {t.staffThreadTs && (
-                              <button
-                                onClick={() => openThread(t, 'staff')}
-                                className="bg-purple-900/30 text-purple-400 border border-purple-700 px-2 py-1 rounded font-mono text-xs hover:bg-purple-900/50 transition-all"
-                              >
-                                staff
-                              </button>
-                            )}
-                            {!t.userThreadTs && !t.staffThreadTs && (
-                              <span className="text-gray-500 font-mono text-xs">-</span>
-                            )}
-                          </div>
+                          <Link
+                            href={`/admin/tickets/sw-${t.id}`}
+                            className="bg-amber-900/30 text-amber-400 border border-amber-700 px-3 py-1.5 rounded-xl font-mono text-xs hover:bg-amber-900/50 transition-all whitespace-nowrap"
+                          >
+                            open →
+                          </Link>
                         </td>
                       </tr>
                     ))}
