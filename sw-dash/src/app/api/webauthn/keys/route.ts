@@ -60,14 +60,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'not your key bro' }, { status: 403 })
     }
 
-    const keyCount = await prisma.yubikey.count({
-      where: { userId: user!.id },
-    })
-
-    if (keyCount <= 1) {
-      return NextResponse.json({ error: 'cant delete ur only key' }, { status: 400 })
-    }
-
     await prisma.yubikey.delete({
       where: { id: keyId },
     })

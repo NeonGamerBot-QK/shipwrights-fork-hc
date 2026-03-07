@@ -171,7 +171,8 @@ export default function Profile() {
       if (res.ok) {
         load()
       } else {
-        setError('key delete broke')
+        const d = await res.json()
+        setError(d.error || 'key delete broke')
       }
     } catch {
       setError('delete request died')
