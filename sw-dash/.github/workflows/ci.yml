@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  format:
+    name: prettier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: check
+        id: check
+        run: pnpm exec prettier --check .
+
+      - name: comment on pr
+        if: failure() && steps.check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "run `pnpm pretty` please :3"
+            })
+
+  typecheck:
+    name: typescript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
+
+  migrations:
+    name: db schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: check
+        id: check
+        run: |
+          if git diff origin/main --name-only | grep -q "prisma/schema.prisma"; then
+            if ! git diff origin/main --name-only | grep -q "prisma/migrations/"; then
+              echo "missing=true" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          fi
+
+      - name: comment on pr
+        if: failure() && steps.check.outputs.missing == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "You changed db schema but didn't add a migration file. Run this:\n\n```\npnpm prisma migrate dev --name <your_change_name>\n```"
+            })
