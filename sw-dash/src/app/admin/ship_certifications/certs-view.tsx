@@ -187,8 +187,13 @@ export function CertsView({ initial }: Props) {
   }, [selectedTypes, ftType, status, sortBy, lbMode, search, from, to])
 
   const hasUrlFilters = !!(
-    params.get('status') || params.get('ftType') || params.get('type') ||
-    params.get('search') || params.get('from') || params.get('to') || params.get('sortBy')
+    params.get('status') ||
+    params.get('ftType') ||
+    params.get('type') ||
+    params.get('search') ||
+    params.get('from') ||
+    params.get('to') ||
+    params.get('sortBy')
   )
   const ready = useRef(hasUrlFilters)
 

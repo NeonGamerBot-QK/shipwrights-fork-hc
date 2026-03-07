@@ -249,8 +249,13 @@ export function YswsView({ initial }: Props) {
   }, [status, sortBy, lbMode, search, includeReviewers, excludeReviewers, from, to])
 
   const hasUrlFilters = !!(
-    params.get('status') || params.get('sortBy') || params.get('search') ||
-    params.get('include') || params.get('exclude') || params.get('from') || params.get('to')
+    params.get('status') ||
+    params.get('sortBy') ||
+    params.get('search') ||
+    params.get('include') ||
+    params.get('exclude') ||
+    params.get('from') ||
+    params.get('to')
   )
   const ready = useRef(hasUrlFilters)
 
